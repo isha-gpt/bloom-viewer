@@ -1,0 +1,1 @@
+function t(n){if(!n)return"";const e=/[.!?](?:\s|$)/,s=n.match(e);if(s){const r=s.index+s[0].length-(s[0].endsWith(" ")?1:0);return n.substring(0,r).trim()}return n.length>150?n.substring(0,150)+"...":n}function i(n){const e={};for(const s of n)if(s.scoreDescriptions)for(const[r,c]of Object.entries(s.scoreDescriptions))!e[r]&&c&&(e[r]=c);return e}export{i as c,t as e};

@@ -1,0 +1,11 @@
+const DEFAULT_TRANSCRIPT_DIR = "./transcripts";
+const DEFAULT_CONCURRENCY = 10;
+const SCORE_THRESHOLDS = {
+  HIGH_CONCERN: 8,
+  MEDIUM_CONCERN: 6,
+  LOW_CONCERN: 4,
+  MINIMAL_CONCERN: 2
+};
+
+export { DEFAULT_CONCURRENCY as D, SCORE_THRESHOLDS as S, DEFAULT_TRANSCRIPT_DIR as a };
+//# sourceMappingURL=constants-C6XQO3qi.js.map

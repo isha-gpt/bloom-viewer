@@ -17,6 +17,19 @@
   // Load transcript using our new loader
   const loader = createTranscriptLoader(filePath);
 
+  // Extract suite name, config name, and transcript ID from file path
+  let suiteAndConfig = $derived.by(() => {
+    const pathParts = filePath.split('/');
+    if (pathParts.length >= 3) {
+      const suite = pathParts[0];
+      const config = pathParts[1];
+      const filename = pathParts[pathParts.length - 1];
+      const transcriptId = filename.replace(/^transcript_/, '').replace(/\.json$/, '');
+      return { suite, config, transcriptId };
+    }
+    return { suite: '', config: '', transcriptId: loader.transcript?.id || '' };
+  });
+
   // View settings state
   let selectedView = $state('combined');
   let showApiFailures = $state(false);
@@ -25,6 +38,12 @@
 
   // Message state management
   let openMessages: Record<string, boolean> = $state({});
+
+  // Message refs for scrolling
+  let messageRefs: Map<string, HTMLElement> = new Map();
+
+  // Store the current highlighted quote text
+  let highlightedQuoteText = $state<string | null>(null);
 
   // Parse conversation columns from loaded transcript
   let conversationColumns = $derived.by(() => {
@@ -85,9 +104,141 @@
 
   // Utility function to convert string to title case
   function toTitleCase(str: string): string {
-    return str.replace(/\w\S*/g, (txt) => 
+    return str.replace(/\w\S*/g, (txt) =>
       txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase()
     );
+  }
+
+  // Scroll to a specific message by ID and highlight specific quoted text
+  function scrollToMessage(messageId: string, quotedText?: string) {
+    const element = messageRefs.get(messageId);
+    if (element) {
+      // Expand the message if it's collapsed
+      if (openMessages[messageId] === false) {
+        openMessages[messageId] = true;
+      }
+
+      // Store the quoted text to highlight
+      if (quotedText) {
+        highlightedQuoteText = quotedText;
+      }
+
+      // Wait a tick for the message to expand
+      setTimeout(() => {
+        // Scroll to the message with smooth behavior
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Add a highlight effect to the message card
+        element.classList.add('highlight-flash');
+        setTimeout(() => {
+          element.classList.remove('highlight-flash');
+          // Clear the highlighted quote after animation
+          highlightedQuoteText = null;
+        }, 2000);
+      }, 0);
+    }
+  }
+
+  // Build a map of quoted text to message IDs from highlights
+  // Structure: Map<fullQuotedText, { messageId, quotedText }>
+  let quoteToMessageMap = $derived.by(() => {
+    const map = new Map<string, { messageId: string; quotedText: string }>();
+
+    // Access highlights from the transcript metadata
+    const highlights = loader.transcript?.transcript?.metadata?.judge_output?.highlights;
+
+    if (!highlights) return map;
+
+    for (const highlight of highlights) {
+      for (const part of highlight.parts) {
+        map.set(part.quoted_text, {
+          messageId: part.message_id,
+          quotedText: part.quoted_text
+        });
+      }
+    }
+
+    return map;
+  });
+
+  // Render justification text with clickable quote links
+  function renderJustificationWithLinks(text: string, quotes: string[]): string {
+    let result = text;
+    const replacements: Array<{ start: number; end: number; html: string; messageId: string }> = [];
+    let refNumber = 1;
+
+    // Extract all quoted strings from the justification text using regex
+    // Matches text between double quotes, handling escaped quotes
+    const quoteRegex = /"([^"]+)"/g;
+    let match;
+
+    while ((match = quoteRegex.exec(text)) !== null) {
+      const quotedText = match[1]; // Text without the surrounding quotes
+      const fullMatch = match[0];  // Text with the surrounding quotes
+      const startPos = match.index;
+      const endPos = startPos + fullMatch.length;
+
+      // Find if this quoted text matches any part of our highlight quotes
+      for (const [highlightQuote, data] of quoteToMessageMap.entries()) {
+        if (highlightQuote.includes(quotedText) || quotedText.length > 20 && highlightQuote.toLowerCase().includes(quotedText.toLowerCase())) {
+          // Check if this position is already part of a replacement
+          const isOverlapping = replacements.some(
+            (r) => (startPos >= r.start && startPos < r.end) ||
+                   (endPos > r.start && endPos <= r.end)
+          );
+
+          if (!isOverlapping) {
+            // Escape quotes in the quoted text for JSON
+            const escapedQuotedText = data.quotedText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const refLink = `<button class="text-primary hover:text-primary-focus font-semibold cursor-pointer ml-0.5" onclick="document.dispatchEvent(new CustomEvent('scrollToMessage', { detail: { messageId: '${data.messageId}', quotedText: '${escapedQuotedText}' } }))" title="Jump to message">[${refNumber}]</button>`;
+            const newHtml = fullMatch + refLink;
+            replacements.push({
+              start: startPos,
+              end: endPos,
+              html: newHtml,
+              messageId: data.messageId
+            });
+            refNumber++;
+            break; // Only match once per quoted string
+          }
+        }
+      }
+    }
+
+    // Sort replacements by start position in reverse order
+    replacements.sort((a, b) => b.start - a.start);
+
+    // Apply replacements
+    for (const replacement of replacements) {
+      result = result.slice(0, replacement.start) + replacement.html + result.slice(replacement.end);
+    }
+
+    return result;
+  }
+
+  // Listen for scroll events from custom event
+  $effect(() => {
+    function handleScrollToMessage(event: CustomEvent<{ messageId: string; quotedText?: string }>) {
+      const { messageId, quotedText } = event.detail;
+      // Decode HTML entities
+      const decodedQuotedText = quotedText ? quotedText.replace(/&quot;/g, '"').replace(/&#39;/g, "'") : undefined;
+      scrollToMessage(messageId, decodedQuotedText);
+    }
+
+    document.addEventListener('scrollToMessage', handleScrollToMessage as EventListener);
+    return () => {
+      document.removeEventListener('scrollToMessage', handleScrollToMessage as EventListener);
+    };
+  });
+
+  // Svelte action to register message refs
+  function registerMessageRef(node: HTMLElement, messageId: string) {
+    messageRefs.set(messageId, node);
+    return {
+      destroy() {
+        messageRefs.delete(messageId);
+      }
+    };
   }
 
 
@@ -129,6 +280,21 @@
   });
 
 </script>
+
+<style>
+  :global(.highlight-flash) {
+    animation: highlight-pulse 2s ease-in-out;
+  }
+
+  @keyframes highlight-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+    50% {
+      box-shadow: 0 0 20px 5px rgba(59, 130, 246, 0.5);
+    }
+  }
+</style>
 
 <div class="w-full">
   <!-- Loading State -->
@@ -181,9 +347,9 @@
       <div class="flex justify-between items-start mb-4">
         <div>
           <h1 class="text-2xl font-bold mb-2">
-            {loader.transcript?.split} - {loader.transcript?.model}
+            {suiteAndConfig.suite} - {suiteAndConfig.config}
           </h1>
-          <p class="text-base-content/70">Transcript #{loader.transcript?.id}</p>
+          <p class="text-base-content/70">Transcript {suiteAndConfig.transcriptId}</p>
         </div>
       </div>
 
@@ -222,7 +388,7 @@
       <!-- Judge Justification -->
       <div class="mb-4">
         <h3 class="text-lg font-semibold mb-2">Judge Justification</h3>
-        <p class="text-sm leading-relaxed">{loader.transcript?.justification}</p>
+        {@render justificationContent()}
       </div>
 
       <!-- System Prompt (Collapsible) -->
@@ -328,9 +494,9 @@
         class="overflow-x-auto overscroll-x-contain scroll-smooth"
         bind:this={scrollContainer}
       >
-        <div class="flex gap-6 snap-x snap-mandatory px-6" style={hasHorizontalOverflow ? '' : 'justify-content: center;'}>
+        <div class="flex gap-6 snap-x snap-mandatory px-6 max-w-6xl mx-auto" style={hasHorizontalOverflow ? '' : 'justify-content: center;'}>
           {#each conversationColumns as column, columnIndex}
-            <div class="snap-start w-[clamp(350px,calc((100vw-3rem)/3),500px)] max-w-full flex-none">
+            <div class="snap-start flex-1 min-w-[500px] max-w-full">
               {@render conversationColumn(column, columnIndex)}
             </div>
           {/each}
@@ -338,6 +504,20 @@
       </div>
     </div>
   {/if}
+{/snippet}
+
+<!-- Justification Content Snippet -->
+{#snippet justificationContent()}
+  {@const justification = loader.transcript?.justification || ''}
+  {@const quotes = Array.from(quoteToMessageMap.keys()).sort((a, b) => b.length - a.length)}
+
+  <div class="text-sm leading-relaxed">
+    {#if quotes.length === 0}
+      <p>{justification}</p>
+    {:else}
+      {@html renderJustificationWithLinks(justification, quotes)}
+    {/if}
+  </div>
 {/snippet}
 
 <!-- Conversation Column Snippet -->
@@ -355,15 +535,22 @@
     <div class="space-y-2">
       {#each column.messages as message, messageIndex}
         {@const isVisible = shouldShowSharedMessage(message, messageIndex, column.messages)}
-        <MessageCard
-          {message}
-          {messageIndex}
-          {columnIndex}
-          isOpen={isMessageOpen(message.id || '')}
-          {isVisible}
-          onToggle={toggleMessage}
-          onCopy={onCopyAction}
-        />
+        {@const messageId = message.id || ''}
+        <div
+          data-message-id={messageId}
+          use:registerMessageRef={messageId}
+        >
+          <MessageCard
+            {message}
+            {messageIndex}
+            {columnIndex}
+            isOpen={isMessageOpen(messageId)}
+            {isVisible}
+            onToggle={toggleMessage}
+            onCopy={onCopyAction}
+            highlightText={highlightedQuoteText}
+          />
+        </div>
       {/each}
     </div>
   </div>

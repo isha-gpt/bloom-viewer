@@ -5,6 +5,7 @@
 	import FilterControls from '$lib/client/components/common/FilterControls.svelte';
 	import ViewModeToggle from '$lib/client/components/common/ViewModeToggle.svelte';
 	import ErrorDisplay from '$lib/client/components/ErrorDisplay.svelte';
+	import MetajudgeReport from '$lib/client/components/common/MetajudgeReport.svelte';
 	import { filterState, viewSettings, initializeStores } from '$lib/client/stores';
 	import { createFilterFunction } from '$lib/shared/filter-utils';
 	import { createTranscriptDataLoader } from '$lib/shared/services/transcript-data.svelte';
@@ -14,6 +15,26 @@
 
 	// Create data loader
 	const dataLoader = createTranscriptDataLoader();
+
+	// Store for judgment data by config path
+	let judgmentData = $state<Record<string, any>>({});
+
+	// Function to load judgment data for a config
+	async function loadJudgmentData(configPath: string) {
+		if (judgmentData[configPath]) return; // Already loaded
+
+		try {
+			const response = await fetch(`/api/judgment/${encodeURIComponent(configPath)}`);
+			if (response.ok) {
+				judgmentData[configPath] = await response.json();
+			} else {
+				judgmentData[configPath] = null;
+			}
+		} catch (error) {
+			console.error('Failed to load judgment data for', configPath, error);
+			judgmentData[configPath] = null;
+		}
+	}
 
 	// Get current subdirectory path from URL parameter
 	let currentPath = $derived($page.url.searchParams.get('path') || '');
@@ -41,12 +62,9 @@
 
 	// Load initial data
 	onMount(() => {
-		console.log('🚀 [DEBUG] onMount() called, initializing stores...');
 		initializeStores();
-		console.log('📊 [DEBUG] Stores initialized, calling loadData()...');
 		// Load all metadata in one request
 		dataLoader.loadData('list', currentPath || undefined);
-		console.log('✅ [DEBUG] onMount() completed');
 
 		// SSE updates removed; no subscription cleanup needed
 		return () => {};
@@ -54,62 +72,39 @@
 
 	// Watch for changes in path and reload data (view mode changes no longer trigger reload!)
 	let previousPath = $state('');
-	
+
 	$effect(() => {
-		console.log('🔄 [DEBUG] $effect() triggered for path change');
-		
 		if (currentPath !== previousPath) {
-			console.log('📂 [DEBUG] Path changed, reloading data:', { 
-				path: { from: previousPath, to: currentPath }
-			});
-			
 			previousPath = currentPath;
-			
+
 			if (typeof window !== 'undefined') { // Only reload in browser
-				console.log('🌐 [DEBUG] Window available, calling loadData()...');
 				// View mode no longer matters for loading - always load full metadata in one request
 				dataLoader.loadData('list', currentPath || undefined);
-			} else {
-				console.log('🚫 [DEBUG] Window not available, skipping loadData()');
 			}
-		} else {
-			console.log('➡️ [DEBUG] Path unchanged:', { path: currentPath });
 		}
 	});
 
 	// Extract unique values for dropdowns from both list and tree data
 	let allTranscripts = $derived.by(() => {
-		console.log('🔍 [DEBUG] Computing allTranscripts...', { 
-			viewMode: viewSettings.value.viewMode, 
-			transcriptsLength: dataLoader.transcripts.length, 
-			folderTreeLength: dataLoader.folderTree.length 
-		});
 		const result = viewSettings.value.viewMode === 'list' ? dataLoader.transcripts : extractAllTranscriptsFromTree(dataLoader.folderTree || []);
-		console.log('📊 [DEBUG] allTranscripts computed, length:', result.length);
 		return result;
 	});
-	
+
 	// Extract all unique score types for table columns
 	let scoreTypes = $derived.by(() => {
-		console.log('🏷️ [DEBUG] Computing scoreTypes from', allTranscripts.length, 'transcripts...');
 		const result = [...new Set(allTranscripts.flatMap(t => Object.keys(t.scores || {})))].sort();
-		console.log('🏷️ [DEBUG] scoreTypes computed:', result);
 		return result;
 	});
-	
+
 	// Collect score descriptions from all transcripts for tooltips
 	let scoreDescriptions = $derived.by(() => {
-		console.log('📝 [DEBUG] Collecting score descriptions from', allTranscripts.length, 'transcripts...');
 		const result = collectScoreDescriptions(allTranscripts);
-		console.log('📝 [DEBUG] scoreDescriptions collected:', Object.keys(result));
 		return result;
 	});
-	
+
 	// Create filter function from expression
 	let filterFunction = $derived.by(() => {
-		console.log('🔧 [DEBUG] Creating filter function for expression:', filterState.value.filterExpression);
 		const result = createFilterFunction(filterState.value.filterExpression);
-		console.log('🔧 [DEBUG] Filter function created');
 		return result;
 	});
 	
@@ -145,7 +140,7 @@
 </script>
 
 <svelte:head>
-	<title>{currentPath ? `${currentPath} - Petri Transcript Viewer` : 'Petri Transcript Viewer'}</title>
+	<title>{currentPath ? `${currentPath} - Bloom Transcript Viewer` : 'Bloom Transcript Viewer'}</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 space-y-6">
@@ -180,7 +175,7 @@
 	<!-- Header -->
 	<div class="flex justify-between items-center">
 		<div>
-			<h1 class="text-3xl font-bold">Petri Transcript Viewer</h1>
+			<h1 class="text-3xl font-bold">Bloom Transcript Viewer</h1>
 			{#if currentPath}
 				<p class="text-sm text-base-content/70 mt-1">Viewing: {currentPath}</p>
 			{/if}
@@ -236,27 +231,106 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Unified Table View -->
-		<div class="card bg-base-100 shadow-sm">
-			<div class="card-body">
-				<div class="flex justify-between items-center mb-4">
-					<h2 class="text-xl font-bold">
-						{viewSettings.value.viewMode === 'tree' ? 'Folder Tree' : 'Transcript List'}
-					</h2>
-					
-					<!-- Progressive Loading Indicator removed (no streaming) -->
-				</div>
-				
-				<TranscriptTable 
-					transcripts={filteredTranscripts}
-					folderTree={filteredFolderTree}
-					{scoreTypes}
-					{scoreDescriptions}
-					viewMode={viewSettings.value.viewMode}
-					currentPath={currentPath}
-					onTranscriptClick={handleTranscriptSelect}
-				/>
+		<!-- Evaluation Suites View (Tree) or Transcript List -->
+		{#if viewSettings.value.viewMode === 'tree' && !currentPath}
+			<!-- Evaluation Suites Display -->
+			<div class="space-y-4">
+				<h2 class="text-2xl font-bold mb-6">Evaluation Suites</h2>
+
+				{#each filteredFolderTree as suite}
+					{#if suite.type === 'folder'}
+						<div class="collapse collapse-arrow bg-base-100 border border-base-300 shadow-sm">
+							<input type="checkbox" />
+							<div class="collapse-title text-xl font-medium flex items-center justify-between">
+								<div class="flex items-center gap-3">
+									<span>{suite.name}</span>
+								</div>
+							</div>
+							<div class="collapse-content">
+								<div class="pt-4 space-y-3">
+									{#each (suite.subRows || []) as config}
+										{#if config.type === 'folder'}
+											{@const auditorModelShort = config.auditorModel?.split('/').pop() || 'Unknown'}
+											{@const targetModelShort = config.targetModel?.split('/').pop() || 'Unknown'}
+											<div class="collapse collapse-arrow bg-base-200 border border-base-300">
+												<input
+													type="checkbox"
+													onchange={(e) => {
+														if (e.target.checked) {
+															loadJudgmentData(config.path);
+														}
+													}}
+												/>
+												<div class="collapse-title font-medium flex items-center justify-between">
+													<div class="flex items-center gap-3">
+														<span>{config.name}</span>
+														<span class="badge badge-sm badge-ghost border border-gray-300">evaluator: {auditorModelShort}</span>
+														<span class="badge badge-sm badge-ghost border border-gray-300">target: {targetModelShort}</span>
+														<span class="badge badge-sm badge-ghost">{config.transcriptCount || 0} transcripts</span>
+													</div>
+													{#if judgmentData[config.path]?.summaryStatistics?.average_behavior_presence_score !== undefined}
+														{@const score = judgmentData[config.path].summaryStatistics.average_behavior_presence_score}
+														{@const scoreColor = score <= 2.5 ? 'bg-white text-black border border-gray-300' : score <= 5 ? 'bg-yellow-200/60 text-yellow-900 border border-yellow-300' : score <= 7.5 ? 'bg-orange-400/60 text-orange-900 border border-orange-500' : 'bg-red-500/60 text-red-900 border border-red-600'}
+														<span class="badge badge-sm {scoreColor}">
+															Avg Behavior Score: {score.toFixed(1)}/10
+														</span>
+													{/if}
+												</div>
+												<div class="collapse-content">
+													<div class="pt-2 space-y-4">
+														<!-- Metajudge Report -->
+														{#if judgmentData[config.path]}
+															<MetajudgeReport
+																summaryStatistics={judgmentData[config.path].summaryStatistics}
+																metajudgmentResponse={judgmentData[config.path].metajudgmentResponse}
+																metajudgmentJustification={judgmentData[config.path].metajudgmentJustification}
+															/>
+														{/if}
+
+														<!-- Transcript Table -->
+														<TranscriptTable
+															transcripts={[]}
+															folderTree={config.subRows || []}
+															{scoreTypes}
+															{scoreDescriptions}
+															viewMode="tree"
+															currentPath={currentPath}
+															onTranscriptClick={handleTranscriptSelect}
+														/>
+													</div>
+												</div>
+											</div>
+										{/if}
+									{/each}
+								</div>
+							</div>
+						</div>
+					{/if}
+				{/each}
 			</div>
-		</div>
+		{:else}
+			<!-- Standard Table View (list mode or subdirectory) -->
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body">
+					<div class="flex justify-between items-center mb-4">
+						<h2 class="text-xl font-bold">
+							{viewSettings.value.viewMode === 'tree' ? 'Folder Tree' : 'Transcript List'}
+						</h2>
+
+						<!-- Progressive Loading Indicator removed (no streaming) -->
+					</div>
+
+					<TranscriptTable
+						transcripts={filteredTranscripts}
+						folderTree={filteredFolderTree}
+						{scoreTypes}
+						{scoreDescriptions}
+						viewMode={viewSettings.value.viewMode}
+						currentPath={currentPath}
+						onTranscriptClick={handleTranscriptSelect}
+					/>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>

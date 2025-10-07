@@ -31,20 +31,20 @@
   // Create breadcrumb segments from file path
   let breadcrumbSegments = $derived.by(() => {
     if (!filePath) return [];
-    
+
     const pathParts = filePath.split('/');
     const segments = [];
-    
+
     // Build cumulative paths for each segment, skipping the rootDir (first segment)
-    // The first segment is typically the rootDir (e.g., "transcripts"), 
+    // The first segment is typically the rootDir (e.g., "transcripts"),
     // so we want paths relative to that
     for (let i = 0; i < pathParts.length; i++) {
       const segment = pathParts[i];
       const isFile = i === pathParts.length - 1 && segment.endsWith('.json');
-      
+
       // For directories, create path relative to rootDir
       let relativePath = pathParts.slice(0, i + 1).join('/');
-      
+
       segments.push({
         name: segment,
         path: relativePath,
@@ -52,15 +52,31 @@
         isClickable: !isFile && i > 0 // Only directories after rootDir are clickable
       });
     }
-    
+
     return segments;
   });
-  
+
+  // Generate page title: "eval suite - config - transcript id"
+  let pageTitle = $derived.by(() => {
+    if (!filePath) return 'Bloom Transcript Viewer';
+
+    const pathParts = filePath.split('/');
+    // Expected structure: [suite, config, transcript_xxx.json]
+    if (pathParts.length >= 3) {
+      const suite = pathParts[0];
+      const config = pathParts[1];
+      const filename = pathParts[pathParts.length - 1];
+      const transcriptId = filename.replace(/^transcript_/, '').replace(/\.json$/, '');
+      return `${suite} - ${config} - ${transcriptId}`;
+    }
+    return filePath;
+  });
+
   let errorMessage = $derived(filePath ? '' : 'Invalid transcript path');
 </script>
 
 <svelte:head>
-  <title>{filePath ? `${filePath} - Petri Transcript Viewer` : 'Petri Transcript Viewer'}</title>
+  <title>{pageTitle}</title>
 </svelte:head>
 
 <div class="min-h-screen bg-base-100">

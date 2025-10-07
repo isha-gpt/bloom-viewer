@@ -56,7 +56,7 @@ function _page($$payload, $$props) {
   let errorMessage = filePath ? "" : "Invalid transcript path";
   const each_array = ensure_array_like(breadcrumbSegments);
   head($$payload, ($$payload2) => {
-    $$payload2.title = `<title>${escape_html(filePath ? `${filePath} - Petri Transcript Viewer` : "Petri Transcript Viewer")}</title>`;
+    $$payload2.title = `<title>${escape_html(filePath ? `${filePath} - Bloom Transcript Viewer` : "Bloom Transcript Viewer")}</title>`;
   });
   $$payload.out += `<div class="min-h-screen bg-base-100"><div class="navbar bg-base-200"><div class="flex-1"><div class="breadcrumbs text-sm"><ul><li><a href="/" class="font-mono text-xs">Home</a></li> <!--[-->`;
   for (let index = 0, $$length = each_array.length; index < $$length; index++) {

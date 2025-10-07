@@ -20,7 +20,7 @@
 <div class="min-h-screen bg-base-200">
 	<div class="navbar bg-base-100 shadow-sm">
 		<div class="navbar-start">
-			<a href="/" class="btn btn-ghost text-xl">Petri Transcript Viewer</a>
+			<a href="/" class="btn btn-ghost text-xl">bloom evals - transcript viewer</a>
 		</div>
 		<div class="navbar-end">
 			<label class="swap swap-rotate mr-4">
@@ -40,4 +40,12 @@
 	<main>
 		{@render children()}
 	</main>
+
+	<footer class="footer footer-center p-4 bg-base-100 text-base-content mt-8">
+		<aside>
+			<p class="text-sm text-base-content/70">
+				Based on <a href="https://www.npmjs.com/package/@kaifronsdal/transcript-viewer" target="_blank" rel="noopener noreferrer" class="link link-hover">@kaifronsdal/transcript-viewer</a>
+			</p>
+		</aside>
+	</footer>
 </div>

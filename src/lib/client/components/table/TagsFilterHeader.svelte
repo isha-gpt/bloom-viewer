@@ -55,30 +55,6 @@
     </div>
   </div>
 
-  <!-- Dropdown to add tags -->
-  <div class="dropdown dropdown-end">
-    <div tabindex="0" role="button" class="btn btn-xs" aria-haspopup="listbox">
-      Add
-    </div>
-    <ul tabindex="-1" role="listbox" class="dropdown-content z-50 menu p-2 shadow bg-base-100 rounded-box w-56 max-h-60 overflow-auto">
-      {#if availableTags.length === 0}
-        <li class="text-xs text-base-content/50 px-2 py-1">No more tags</li>
-      {:else}
-        {#each availableTags as tag}
-          <li>
-            <button class="text-sm" role="option" aria-selected="false" onclick={() => { addTag(tag); }}>
-              {tag}
-            </button>
-          </li>
-        {/each}
-      {/if}
-      <li class="mt-1">
-        <button class="btn btn-ghost btn-xs w-full" onclick={() => { clearAll(); }}>
-          Clear
-        </button>
-      </li>
-    </ul>
-  </div>
 </div>
 
 

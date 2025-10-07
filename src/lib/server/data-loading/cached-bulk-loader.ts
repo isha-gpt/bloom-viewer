@@ -92,9 +92,12 @@ export async function loadCachedTranscriptsMetadataOnly(
               tags: metadata.tags || [],
               systemPrompt: undefined, // Cannot extract system prompt from metadata-only (no events)
               transcript: undefined as any, // Remove heavy field - not needed for homepage
-              _filePath: relativePath // Store relative path
+              _filePath: relativePath, // Store relative path
+              // Add model metadata for configuration folders
+              auditorModel: metadata.auditor_model,
+              targetModel: metadata.target_model
             };
-            
+
             return transcript;
           }
           return null;

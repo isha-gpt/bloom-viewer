@@ -5592,7 +5592,7 @@ function _page($$payload, $$props) {
   let filteredTranscriptCount = viewSettings.value.viewMode === "list" ? filteredTranscripts.length : extractAllTranscriptsFromTree(filteredFolderTree).length;
   let totalTranscriptCount = allTranscripts.length;
   head($$payload, ($$payload2) => {
-    $$payload2.title = `<title>${escape_html(currentPath ? `${currentPath} - Petri Transcript Viewer` : "Petri Transcript Viewer")}</title>`;
+    $$payload2.title = `<title>${escape_html(currentPath ? `${currentPath} - Bloom Transcript Viewer` : "Bloom Transcript Viewer")}</title>`;
   });
   $$payload.out += `<div class="container mx-auto p-4 space-y-6">`;
   if (breadcrumbSegments.length > 0) {
@@ -5615,7 +5615,7 @@ function _page($$payload, $$props) {
   } else {
     $$payload.out += "<!--[!-->";
   }
-  $$payload.out += `<!--]--> <div class="flex justify-between items-center"><div><h1 class="text-3xl font-bold">Petri Transcript Viewer</h1> `;
+  $$payload.out += `<!--]--> <div class="flex justify-between items-center"><div><h1 class="text-3xl font-bold">Bloom Transcript Viewer</h1> `;
   if (currentPath) {
     $$payload.out += "<!--[-->";
     $$payload.out += `<p class="text-sm text-base-content/70 mt-1">Viewing: ${escape_html(currentPath)}</p>`;

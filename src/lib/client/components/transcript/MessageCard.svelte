@@ -22,17 +22,19 @@
     isVisible?: boolean;
     onToggle: (messageId: string) => void;
     onCopy: (action: CopyAction) => void;
+    highlightText?: string | null;
   }
 
 
-  let { 
-    message, 
-    messageIndex, 
-    columnIndex, 
-    isOpen, 
+  let {
+    message,
+    messageIndex,
+    columnIndex,
+    isOpen,
     isVisible = true,
-    onToggle, 
-    onCopy 
+    onToggle,
+    onCopy,
+    highlightText = null
   }: Props = $props();
 
   // Proper text extraction from original code
@@ -105,7 +107,17 @@
 
   function renderMarkdown(content: string): string {
     try {
-      return md.render(content || '');
+      let result = md.render(content || '');
+
+      // If we have highlightText and it exists in the content, highlight it
+      if (highlightText && result.includes(highlightText)) {
+        // Escape special regex characters
+        const escapedHighlight = highlightText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedHighlight})`, 'gi');
+        result = result.replace(regex, '<mark class="bg-yellow-300 dark:bg-yellow-600 px-1 rounded">$1</mark>');
+      }
+
+      return result;
     } catch {
       return content || '';
     }
@@ -222,11 +234,75 @@
   function toggleRawJsonView() {
     showRawJson = !showRawJson;
   }
+
+  // Color coding based on message type
+  function getMessageColors(type: string): { bg: string; headerBg: string; border: string; badgeBg: string; badgeText: string } {
+    switch (type) {
+      case 'tool':
+        return {
+          bg: 'bg-blue-50/50 dark:bg-blue-950/20',
+          headerBg: 'bg-blue-100 dark:bg-blue-900/40',
+          border: 'border-blue-200 dark:border-blue-800',
+          badgeBg: 'bg-blue-500 dark:bg-blue-600',
+          badgeText: 'text-white'
+        };
+      case 'assistant':
+        return {
+          bg: 'bg-purple-50/50 dark:bg-purple-950/20',
+          headerBg: 'bg-purple-100 dark:bg-purple-900/40',
+          border: 'border-purple-200 dark:border-purple-800',
+          badgeBg: 'bg-purple-500 dark:bg-purple-600',
+          badgeText: 'text-white'
+        };
+      case 'user':
+        return {
+          bg: 'bg-green-50/50 dark:bg-green-950/20',
+          headerBg: 'bg-green-100 dark:bg-green-900/40',
+          border: 'border-green-200 dark:border-green-800',
+          badgeBg: 'bg-green-500 dark:bg-green-600',
+          badgeText: 'text-white'
+        };
+      case 'system':
+        return {
+          bg: 'bg-amber-50/50 dark:bg-amber-950/20',
+          headerBg: 'bg-amber-100 dark:bg-amber-900/40',
+          border: 'border-amber-200 dark:border-amber-800',
+          badgeBg: 'bg-amber-500 dark:bg-amber-600',
+          badgeText: 'text-white'
+        };
+      case 'api_failure':
+        return {
+          bg: 'bg-red-50/50 dark:bg-red-950/20',
+          headerBg: 'bg-red-100 dark:bg-red-900/40',
+          border: 'border-red-200 dark:border-red-800',
+          badgeBg: 'bg-red-500 dark:bg-red-600',
+          badgeText: 'text-white'
+        };
+      case 'info':
+        return {
+          bg: 'bg-slate-50/50 dark:bg-slate-950/20',
+          headerBg: 'bg-slate-100 dark:bg-slate-900/40',
+          border: 'border-slate-200 dark:border-slate-800',
+          badgeBg: 'bg-slate-500 dark:bg-slate-600',
+          badgeText: 'text-white'
+        };
+      default:
+        return {
+          bg: 'bg-base-100',
+          headerBg: 'bg-base-200',
+          border: 'border-base-300',
+          badgeBg: 'bg-base-300',
+          badgeText: 'text-base-content'
+        };
+    }
+  }
+
+  const messageColors = $derived(getMessageColors(message.type));
 </script>
 
 <!-- Message Card Container -->
-<div 
-  class={`border rounded-lg bg-base-100 ${leftEdgeClassForAssistant(message)} ${message.isShared ? 'border-dashed' : ''} ${!isVisible ? 'invisible pointer-events-none' : ''}`}
+<div
+  class={`border rounded-lg ${messageColors.bg} ${messageColors.border} ${leftEdgeClassForAssistant(message)} ${message.isShared ? 'border-dashed' : ''} ${!isVisible ? 'invisible pointer-events-none' : ''}`}
   data-message-id={message.id}
   style={message.isShared ? 'margin-bottom: 0.5rem;' : ''}
 >
@@ -238,7 +314,7 @@
 
 <!-- Message Header Snippet -->
 {#snippet messageHeader()}
-  <div class="w-full rounded-t-lg"><div
+  <div class="w-full rounded-t-lg {messageColors.headerBg}"><div
       role="button"
       tabindex="0"
       aria-expanded={isOpen}
@@ -258,8 +334,7 @@
 {#snippet headerBadges()}
   {@const messageName = getMessageSourceLabel(message)}
   <div class="flex items-center gap-2">
-    <!-- <span class="badge {getMessageTypeBadgeColor(message.type)} badge-sm font-mono"> -->
-     <span class="badge badge-outline badge-xs font-mono">
+    <span class="badge badge-xs font-mono {messageColors.badgeBg} {messageColors.badgeText}">
       {message.type.toUpperCase()}
     </span>
     <span class="badge badge-outline badge-xs">

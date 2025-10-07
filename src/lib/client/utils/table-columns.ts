@@ -20,9 +20,10 @@ function calculateIdColumnWidth(data: TableRow[]): number {
         // For folders, use the folder name
         contentLength = (row.name || 'Folder').length;
       } else {
-        // For transcripts, use the formatted ID (#123)
-        const idPart = row.id ? String(row.id).split('_').pop() : '';
-        contentLength = idPart ? `#${idPart}`.length : 0;
+        // For transcripts, use the ID without "transcript_" prefix
+        const idStr = row.id ? String(row.id) : '';
+        const withoutPrefix = idStr.startsWith('transcript_') ? idStr.substring(11) : idStr;
+        contentLength = withoutPrefix.length;
       }
       
       // Calculate total width needed: content + indentation + padding
@@ -42,13 +43,7 @@ function calculateIdColumnWidth(data: TableRow[]): number {
   
   // Cap the maximum width to prevent extremely wide columns
   const finalWidth = Math.min(maxWidth, 400);
-  
-  console.log('📏 [DEBUG] ID column width calculation:', {
-    calculatedWidth: maxWidth,
-    finalWidth,
-    dataLength: data.length
-  });
-  
+
   return finalWidth;
 }
 
@@ -64,30 +59,20 @@ export function createColumns(scoreTypes: string[], data: TableRow[] = [], score
       cell: ({ row, getValue }) => {
         const value = getValue();
         const isFolder = row.original.type === 'folder';
-        
+
         if (isFolder) {
           return row.original.name || 'Folder';
         }
-        
-        return value ? `#${String(value).split('_').pop()}` : '';
+
+        // Strip "transcript_" prefix if present
+        const idStr = String(value);
+        const withoutPrefix = idStr.startsWith('transcript_') ? idStr.substring(11) : idStr;
+        return withoutPrefix;
       },
       enableSorting: true,
       enableResizing: true,
       size: idColumnWidth,
       minSize: 100,
-    },
-    {
-      id: 'model',
-      accessorKey: 'model',
-      header: 'Model',
-      cell: ({ row, getValue }) => {
-        if (row.original.type === 'folder') return '';
-        return getValue();
-      },
-      enableSorting: true,
-      enableResizing: true,
-      size: 150,
-      minSize: 70,
     },
     {
       id: 'tags',
@@ -159,7 +144,7 @@ export function createColumns(scoreTypes: string[], data: TableRow[] = [], score
 export function getDefaultColumnVisibility(scoreTypes: string[]) {
   const visibility: Record<string, boolean> = {
     id: true,
-    model: true,
+    model: false, // Hide model column by default
     tags: true,
     split: false,
     concerningScore: true,

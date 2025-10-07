@@ -250,12 +250,27 @@ export interface DecisionEvent extends BaseEvent {
 
 export type Events = TranscriptEvent | ToolCreationEvent | InfoEvent | DecisionEvent;
 
+export interface HighlightPart {
+  message_id: string;
+  quoted_text: string;
+  position: [number, number];
+  tool_call_id?: string | null;
+  tool_arg?: string | null;
+}
+
+export interface Highlight {
+  index: number;
+  description: string;
+  parts: HighlightPart[];
+}
+
 export interface JudgeOutput {
   response: string;
   summary: string;
   justification?: string;
   scores: Record<string, number>;
   score_descriptions?: Record<string, string>;
+  highlights?: Highlight[];
 }
 
 export interface TranscriptMetadata {
@@ -292,6 +307,8 @@ export interface TranscriptDisplayMeta {
   tags?: string[];
   systemPrompt?: string;
   _filePath?: string;
+  auditorModel?: string;
+  targetModel?: string;
 }
 
 export interface TranscriptDisplayFull extends TranscriptDisplayMeta {
@@ -377,7 +394,26 @@ export interface TableRow {
   // Folder-specific fields
   isEmpty?: boolean;
   transcriptCount?: number;
-  
+  auditorModel?: string;  // For configuration folders
+  targetModel?: string;   // For configuration folders
+
+  // Metajudge data (for configuration folders with judgment.json)
+  summaryStatistics?: {
+    average_behavior_presence_score?: number;
+    min_behavior_presence_score?: number;
+    max_behavior_presence_score?: number;
+    total_judgments?: number;
+    average_unrealism?: number;
+    average_evaluator_forcefulness?: number;
+    average_evaluation_awareness?: number;
+    average_evaluator_inconsistency?: number;
+    average_instruction_evasion?: number;
+    average_bugs?: number;
+    meta_diversity_score?: number;
+  };
+  metajudgmentResponse?: string;
+  metajudgmentJustification?: string;
+
   // Transcript data fields (only present when type === 'transcript')
   model?: string;
   split?: string;

@@ -27,26 +27,26 @@ export function buildFolderTreeFromTranscripts(
     // Extract directory path from _filePath (e.g., "folder1/subfolder2/transcript_123.json" -> "folder1/subfolder2")
     const filePath = transcript._filePath || '';
     const pathParts = filePath.split('/');
-    
+
     // Remove the filename (last part) to get directory path
     const directoryParts = pathParts.slice(0, -1);
     const directoryPath = directoryParts.join('/');
-    
-    // console.log('🏗️ [CLIENT-TREE] Processing transcript:', { 
-    //   id: transcript.id, 
-    //   filePath, 
-    //   directoryParts, 
-    //   directoryPath 
+
+    // console.log('🏗️ [CLIENT-TREE] Processing transcript:', {
+    //   id: transcript.id,
+    //   filePath,
+    //   directoryParts,
+    //   directoryPath
     // });
-    
+
     // Create nested folder structure
     let currentPath = '';
     let currentFolder = rootNode;
-    
+
     for (const folderName of directoryParts) {
       const parentPath = currentPath;
       currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-      
+
       // Create folder if it doesn't exist
       if (!folderMap.has(currentPath)) {
         const folder: TableRow = {
@@ -58,17 +58,32 @@ export function buildFolderTreeFromTranscripts(
           isEmpty: false,
           transcriptCount: 0
         };
-        
+
         folderMap.set(currentPath, folder);
         currentFolder.subRows!.push(folder);
       }
-      
+
       currentFolder = folderMap.get(currentPath)!;
+
+      // For configuration folders (2nd level), extract model info from first transcript
+      // This assumes all transcripts in a config folder have the same models
+      if (directoryParts.length >= 2 && currentPath.split('/').length === 2 && !currentFolder.auditorModel) {
+        // Access the model info directly from the TranscriptDisplay object
+        const transcriptDisplay = transcript as any;
+        if (transcriptDisplay.auditorModel) {
+          currentFolder.auditorModel = transcriptDisplay.auditorModel;
+          currentFolder.targetModel = transcriptDisplay.targetModel;
+        }
+      }
     }
     
     // Add transcript to the deepest folder
+    // Extract filename from _filePath for display ID
+    const fileName = transcript._filePath ? transcript._filePath.split('/').pop() : transcript.id;
+    const displayId = fileName?.replace(/^transcript_/, '').replace(/\.json$/, '') || transcript.id;
+
     const transcriptNode: TableRow = {
-      id: directoryPath ? `${directoryPath}/${transcript.id}` : transcript.id,
+      id: displayId,
       name: transcript.summary.substring(0, 50) + (transcript.summary.length > 50 ? '...' : ''),
       path: directoryPath ? `${directoryPath}/${transcript.id}` : transcript.id,
       type: 'transcript' as const,

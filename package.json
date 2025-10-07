@@ -1,9 +1,9 @@
 {
-	"name": "@isha/blume-viewer",
+	"name": "@isha/bloom-viewer",
 	"private": false,
 	"version": "1.0.0",
 	"type": "module",
-	"description": "Customized transcript viewer for blume evals based on @kaifronsdal/transcript-viewer",
+	"description": "Customized transcript viewer for bloom evals based on @kaifronsdal/transcript-viewer",
 	"keywords": [
 		"ai",
 		"transcript",
@@ -15,7 +15,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/isha-gpt/blume-viewer.git",
+		"url": "git+https://github.com/isha-gpt/bloom-viewer.git"
 	},
 	"bin": {
 		"transcript-viewer": "bin/transcript-viewer.js"

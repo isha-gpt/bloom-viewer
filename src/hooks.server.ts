@@ -1,9 +1,23 @@
 import type { Handle } from '@sveltejs/kit';
-import { initializeGlobalCache, shutdownGlobalCache } from '$lib/server/cache/transcript-cache';
+import { initializeGlobalCache, shutdownGlobalCache, getTranscriptCache } from '$lib/server/cache/transcript-cache';
 import { TRANSCRIPT_DIR } from '$lib/server/config';
 
 // Initialize cache on server startup
 let cacheInitialized = false;
+
+// Clear cache on HMR in development
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    console.log('🔄 [HMR] Clearing transcript cache due to code changes...');
+    try {
+      const cache = getTranscriptCache();
+      cache.clearCache();
+      cacheInitialized = false;
+    } catch (e) {
+      console.error('Failed to clear cache during HMR:', e);
+    }
+  });
+}
 
 async function initializeCache() {
   if (cacheInitialized) return;

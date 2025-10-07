@@ -1,5 +1,8 @@
 import type { Transcript, TranscriptDisplay, TranscriptDisplayFull, TranscriptDisplayMeta } from '$lib/shared/types';
 
+// Cache version - increment this to force cache invalidation
+const CACHE_VERSION = 2;
+
 /**
  * Extract system prompt from transcript events
  */
@@ -148,11 +151,11 @@ export function extractTranscriptMetadata(
   // Extract behavior directory (parent folder name) - client-safe version
   const pathParts = filePath.split('/');
   const behaviorDir = pathParts.length > 1 ? pathParts[pathParts.length - 2] : '';
-  // Extract transcript number/name (filename without extension) - client-safe version  
+  // Extract transcript number/name (filename without extension) - client-safe version
   const fileName = pathParts[pathParts.length - 1];
   const transcriptNumber = fileName.endsWith('.json') ? fileName.slice(0, -5) : fileName;
-  
-  return {
+
+  const result = {
     id: transcript.metadata.transcript_id || transcriptNumber,
     model: extractModelName(targetModel),
     split: behaviorDir,
@@ -164,6 +167,10 @@ export function extractTranscriptMetadata(
     justification: transcript.metadata.judge_output?.justification || 'No justification available',
     tags: transcript.metadata.tags || [],
     systemPrompt: undefined, // Don't extract system prompt for metadata-only
-    _filePath: filePath
+    _filePath: filePath,
+    // Add model metadata for configuration folders
+    auditorModel: transcript.metadata.auditor_model,
+    targetModel: transcript.metadata.target_model
   };
+  return result;
 }

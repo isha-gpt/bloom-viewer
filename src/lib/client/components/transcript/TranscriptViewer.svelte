@@ -367,17 +367,6 @@
         </div>
       </div>
 
-      <!-- Tags -->
-      {#if loader.metadata?.tags && loader.metadata.tags.length > 0}
-        <div class="mb-4">
-          <h3 class="text-lg font-semibold mb-2">Tags</h3>
-          <div class="flex flex-wrap gap-2">
-            {#each loader.metadata.tags as tag}
-              <span class="badge badge-outline">{tag}</span>
-            {/each}
-          </div>
-        </div>
-      {/if}
 
       <!-- Judge Summary -->
       <div class="mb-4">

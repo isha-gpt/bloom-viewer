@@ -1,7 +1,7 @@
 import './shims.js';
 import * as fs from 'node:fs';
 import fs__default, { readdirSync, statSync, createReadStream } from 'node:fs';
-import path, { resolve, join, normalize } from 'node:path';
+import path, { resolve, join, sep, normalize } from 'node:path';
 import process from 'node:process';
 import * as qs from 'node:querystring';
 import { fileURLToPath } from 'node:url';
@@ -540,7 +540,10 @@ function viaLocal(dir, isEtag, uri, extns) {
 	let i=0, arr=toAssume(uri, extns);
 	let abs, stats, name, headers;
 	for (; i < arr.length; i++) {
-		abs = normalize(join(dir, name=arr[i]));
+		abs = normalize(
+			join(dir, name=arr[i])
+		);
+
 		if (abs.startsWith(dir) && fs.existsSync(abs)) {
 			stats = fs.statSync(abs);
 			if (stats.isDirectory()) continue;
@@ -662,7 +665,7 @@ function sirv (dir, opts={}) {
 		});
 	}
 
-	let lookup = opts.dev ? viaLocal.bind(0, dir, isEtag) : viaCache.bind(0, FILES);
+	let lookup = opts.dev ? viaLocal.bind(0, dir + sep, isEtag) : viaCache.bind(0, FILES);
 
 	return function (req, res, next) {
 		let extns = [''];
@@ -1193,7 +1196,7 @@ const origin = env('ORIGIN', undefined);
 const xff_depth = parseInt(env('XFF_DEPTH', '1'));
 const address_header = env('ADDRESS_HEADER', '').toLowerCase();
 const protocol_header = env('PROTOCOL_HEADER', '').toLowerCase();
-const host_header = env('HOST_HEADER', 'host').toLowerCase();
+const host_header = env('HOST_HEADER', '').toLowerCase();
 const port_header = env('PORT_HEADER', '').toLowerCase();
 
 const body_size_limit = parse_as_bytes(env('BODY_SIZE_LIMIT', '512K'));
@@ -1209,7 +1212,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const asset_dir = `${dir}/client${base}`;
 
 await server.init({
-	env: process.env,
+	env: /** @type {Record<string, string>} */ (process.env),
 	read: (file) => createReadableStream(`${asset_dir}/${file}`)
 });
 
@@ -1218,22 +1221,24 @@ await server.init({
  * @param {boolean} client
  */
 function serve(path, client = false) {
-	return (
-		fs__default.existsSync(path) &&
-		sirv(path, {
-			etag: true,
-			gzip: true,
-			brotli: true,
-			setHeaders:
-				client &&
-				((res, pathname) => {
-					// only apply to build directory, not e.g. version.json
-					if (pathname.startsWith(`/${manifest.appPath}/immutable/`) && res.statusCode === 200) {
-						res.setHeader('cache-control', 'public,max-age=31536000,immutable');
-					}
-				})
-		})
-	);
+	return fs__default.existsSync(path)
+		? sirv(path, {
+				etag: true,
+				gzip: true,
+				brotli: true,
+				setHeaders: client
+					? (res, pathname) => {
+							// only apply to build directory, not e.g. version.json
+							if (
+								pathname.startsWith(`/${manifest.appPath}/immutable/`) &&
+								res.statusCode === 200
+							) {
+								res.setHeader('cache-control', 'public,max-age=31536000,immutable');
+							}
+						}
+					: undefined
+			})
+		: undefined;
 }
 
 // required because the static file server ignores trailing slashes
@@ -1251,7 +1256,7 @@ function serve_prerendered() {
 		}
 
 		if (prerendered.has(pathname)) {
-			return handler(req, res, next);
+			return handler?.(req, res, next);
 		}
 
 		// remove or add trailing slash as appropriate
@@ -1357,17 +1362,15 @@ function sequence(handlers) {
  */
 function get_origin(headers) {
 	const protocol = (protocol_header && headers[protocol_header]) || 'https';
-	const host = headers[host_header];
+	const host = (host_header && headers[host_header]) || headers['host'];
 	const port = port_header && headers[port_header];
-	if (port) {
-		return `${protocol}://${host}:${port}`;
-	} else {
-		return `${protocol}://${host}`;
-	}
+
+	return port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
 }
 
 const handler = sequence(
-	[serve(path.join(dir, 'client'), true), serve_prerendered(), ssr].filter(Boolean)
+	/** @type {(import('sirv').RequestHandler | import('polka').Middleware)[]} */
+	([serve(path.join(dir, 'client'), true), serve_prerendered(), ssr].filter(Boolean))
 );
 
 export { handler };

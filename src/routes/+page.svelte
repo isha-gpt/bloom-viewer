@@ -11,6 +11,7 @@
 	import { createTranscriptDataLoader } from '$lib/shared/services/transcript-data.svelte';
 	import { extractAllTranscriptsFromTree, filterFolderTree } from '$lib/client/utils/folder-tree';
 	import { collectScoreDescriptions } from '$lib/shared/utils/transcript-utils';
+	import { getScoreColorContinuous } from '$lib/shared/score-utils';
 	// Live update SSE removed for simplified API
 
 	// Create data loader
@@ -18,6 +19,9 @@
 
 	// Store for judgment data by config path
 	let judgmentData = $state<Record<string, any>>({});
+
+	// Store for evaluation metadata by config path
+	let evaluationMetadata = $state<Record<string, any>>({});
 
 	// Function to load judgment data for a config
 	async function loadJudgmentData(configPath: string) {
@@ -33,6 +37,23 @@
 		} catch (error) {
 			console.error('Failed to load judgment data for', configPath, error);
 			judgmentData[configPath] = null;
+		}
+	}
+
+	// Function to load evaluation metadata for a config
+	async function loadEvaluationMetadata(configPath: string) {
+		if (evaluationMetadata[configPath]) return; // Already loaded
+
+		try {
+			const response = await fetch(`/api/evaluation/${encodeURIComponent(configPath)}`);
+			if (response.ok) {
+				evaluationMetadata[configPath] = await response.json();
+			} else {
+				evaluationMetadata[configPath] = null;
+			}
+		} catch (error) {
+			console.error('Failed to load evaluation metadata for', configPath, error);
+			evaluationMetadata[configPath] = null;
 		}
 	}
 
@@ -68,6 +89,23 @@
 
 		// SSE updates removed; no subscription cleanup needed
 		return () => {};
+	});
+
+	// Effect to load evaluation metadata and judgment data for all visible configs
+	$effect(() => {
+		if (dataLoader.folderTree) {
+			// Load evaluation metadata and judgment data for all configs in the folder tree
+			for (const suite of dataLoader.folderTree) {
+				if (suite.subRows) {
+					for (const config of suite.subRows) {
+						if (config.type === 'folder' && config.path) {
+							loadEvaluationMetadata(config.path);
+							loadJudgmentData(config.path);
+						}
+					}
+				}
+			}
+		}
 	});
 
 	// Watch for changes in path and reload data (view mode changes no longer trigger reload!)
@@ -258,22 +296,43 @@
 													onchange={(e) => {
 														if (e.target.checked) {
 															loadJudgmentData(config.path);
+															loadEvaluationMetadata(config.path);
 														}
 													}}
 												/>
-												<div class="collapse-title font-medium flex items-center justify-between">
-													<div class="flex items-center gap-3">
-														<span>{config.name}</span>
-														<span class="badge badge-sm badge-ghost border border-gray-300">evaluator: {auditorModelShort}</span>
-														<span class="badge badge-sm badge-ghost border border-gray-300">target: {targetModelShort}</span>
-														<span class="badge badge-sm badge-ghost">{config.transcriptCount || 0} transcripts</span>
+												<div class="collapse-title font-medium">
+													<div class="flex items-center justify-between">
+														<div class="flex items-center gap-3">
+															<span class="font-bold">{config.name}</span>
+															<span class="badge badge-sm badge-ghost">{config.transcriptCount || 0} transcripts</span>
+														</div>
+														<div class="flex items-center gap-2">
+															{#if judgmentData[config.path]?.summaryStatistics?.average_behavior_presence_score !== undefined}
+																{@const score = judgmentData[config.path].summaryStatistics.average_behavior_presence_score}
+																{@const scoreStyle = getScoreColorContinuous(score)}
+																<span class="badge" style={scoreStyle}>
+																	Avg Behavior Presence: {score.toFixed(1)}/10
+																</span>
+															{/if}
+															{#if judgmentData[config.path]?.summaryStatistics?.elicitation_rate !== undefined}
+																{@const rate = judgmentData[config.path].summaryStatistics.elicitation_rate}
+																{@const percentage = (rate * 100).toFixed(1)}
+																{@const rateScore = rate * 10}
+																{@const rateStyle = getScoreColorContinuous(rateScore)}
+																<span class="badge" style={rateStyle}>
+																	Elicitation Rate: {percentage}%
+																</span>
+															{/if}
+														</div>
 													</div>
-													{#if judgmentData[config.path]?.summaryStatistics?.average_behavior_presence_score !== undefined}
-														{@const score = judgmentData[config.path].summaryStatistics.average_behavior_presence_score}
-														{@const scoreColor = score <= 2.5 ? 'bg-white text-black border border-gray-300' : score <= 5 ? 'bg-yellow-200/60 text-yellow-900 border border-yellow-300' : score <= 7.5 ? 'bg-orange-400/60 text-orange-900 border border-orange-500' : 'bg-red-500/60 text-red-900 border border-red-600'}
-														<span class="badge badge-sm {scoreColor}">
-															Avg Behavior Score: {score.toFixed(1)}/10
-														</span>
+													<!-- Display evaluation metadata tags on second row -->
+													{#if evaluationMetadata[config.path]?.metadata}
+														{@const metadata = evaluationMetadata[config.path].metadata}
+														<div class="flex items-center gap-1.5 flex-wrap mt-2">
+															{#each Object.entries(metadata) as [key, value]}
+																<span class="px-1.5 py-0.5 text-[10px] bg-base-200 border border-base-300 font-mono">{key}: {value}</span>
+															{/each}
+														</div>
 													{/if}
 												</div>
 												<div class="collapse-content">

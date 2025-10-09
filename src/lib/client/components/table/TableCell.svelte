@@ -1,6 +1,6 @@
 <script lang="ts">
   import { FlexRender } from '@tanstack/svelte-table';
-  import { getScoreColor } from '$lib/shared/score-utils';
+  import { getScoreColorContinuous } from '$lib/shared/score-utils';
   import type { TableRow } from '$lib/shared/types';
 
   interface Props {
@@ -151,15 +151,15 @@
     </svelte:element>
   {:else if cell.column.id.startsWith('score_') || cell.column.id === 'concerningScore'}
     {@const cellValue = cell.getValue()}
-    <svelte:element 
-      this={cellElement} 
-      class="text-center {baseClasses}" 
+    <svelte:element
+      this={cellElement}
+      class="text-center {baseClasses}"
       style="{cellStyle}"
     >
       {#if cellValue !== null && cellValue !== undefined && cellValue !== '—'}
         {@const score = typeof cellValue === 'string' ? parseFloat(cellValue) : cellValue}
         {#if !isNaN(score)}
-          <span class="badge {getScoreColor(score)} badge-sm font-mono break-words">
+          <span class="badge badge-sm font-mono break-words" style={getScoreColorContinuous(score)}>
             {score}/10
           </span>
         {:else}

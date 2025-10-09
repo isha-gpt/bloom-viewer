@@ -75,29 +75,6 @@ export function createColumns(scoreTypes: string[], data: TableRow[] = [], score
       minSize: 100,
     },
     {
-      id: 'tags',
-      accessorKey: 'tags',
-      header: 'Tags',
-      cell: ({ row }) => {
-        if (row.original.type === 'folder') return '';
-        const tags = (row.original.tags || []) as string[];
-        return tags.join(', ');
-      },
-      filterFn: (row, _columnId, value) => {
-        // Always keep folders visible so tree structure persists
-        if (row.original.type === 'folder') return true;
-        const selected: string[] = Array.isArray(value) ? value : [];
-        if (!selected || selected.length === 0) return true;
-        const rowTags: string[] = Array.isArray((row.original as any).tags) ? (row.original as any).tags : [];
-        // OR semantics: show if row has at least one of the selected tags
-        return selected.some((t) => rowTags.includes(t));
-      },
-      enableSorting: false,
-      enableResizing: true,
-      size: 220,
-      minSize: 120,
-    },
-    {
       id: 'summary',
       accessorKey: 'summary',
       header: 'Summary',
@@ -145,7 +122,6 @@ export function getDefaultColumnVisibility(scoreTypes: string[]) {
   const visibility: Record<string, boolean> = {
     id: true,
     model: false, // Hide model column by default
-    tags: true,
     split: false,
     concerningScore: true,
     summary: true,
@@ -164,7 +140,6 @@ export function getAllColumnInfo(scoreTypes: string[]) {
   return [
     { id: 'id', header: 'ID' },
     { id: 'model', header: 'Model' },
-    { id: 'tags', header: 'Tags' },
     { id: 'split', header: 'Split' },
     { id: 'concerningScore', header: 'Concerning Score' },
     { id: 'summary', header: 'Summary' },

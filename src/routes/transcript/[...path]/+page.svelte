@@ -92,12 +92,21 @@
                 <span class="font-mono text-xs font-semibold">
                   {segment.name}
                 </span>
-              {:else}
-                <!-- Directory - clickable to subdirectory view -->
-                <a 
-                  href="/?path={encodeURIComponent(segment.path)}" 
+              {:else if index === 0}
+                <!-- First segment (suite) - link to root with no path -->
+                <a
+                  href="/"
                   class="font-mono text-xs transition-colors"
-                  title="View directory: {segment.path}"
+                  title="View all suites"
+                >
+                  {segment.name}
+                </a>
+              {:else}
+                <!-- Directory - link to appropriate path in new viewer -->
+                <a
+                  href="/?path={encodeURIComponent(breadcrumbSegments.slice(0, index + 1).map(s => s.name).join('/'))}"
+                  class="font-mono text-xs transition-colors"
+                  title="View directory: {segment.name}"
                 >
                   {segment.name}
                 </a>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { getScoreColorContinuous } from '$lib/shared/score-utils';
+
   interface Props {
     summaryStatistics?: {
       average_behavior_presence_score?: number;
@@ -22,16 +24,6 @@
   // Helper to format numbers to 1 decimal place
   function fmt(num: number | undefined): string {
     return num !== undefined ? num.toFixed(1) : 'N/A';
-  }
-
-  // Get color class based on score (1=white, 10=red)
-  function getScoreColor(score: number | undefined): string {
-    if (score === undefined) return 'badge-neutral';
-
-    if (score <= 2.5) return 'bg-white text-black border border-gray-300';
-    if (score <= 5) return 'bg-yellow-200/60 text-yellow-900 border border-yellow-300'; // yellow translucent
-    if (score <= 7.5) return 'bg-orange-400/60 text-orange-900 border border-orange-500'; // orange translucent
-    return 'bg-red-500/60 text-red-900 border border-red-600'; // red translucent
   }
 
   // Strip out XML-like tags and justification section from metajudgment response
@@ -89,37 +81,37 @@
     {#if summaryStatistics}
       <div class="flex flex-wrap gap-1.5">
         {#if summaryStatistics.meta_diversity_score !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.meta_diversity_score)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.meta_diversity_score)}>
             Diversity: {summaryStatistics.meta_diversity_score}/10
           </span>
         {/if}
         {#if summaryStatistics.average_unrealism !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.average_unrealism)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.average_unrealism)}>
             Unrealism: {fmt(summaryStatistics.average_unrealism)}/10
           </span>
         {/if}
         {#if summaryStatistics.average_evaluator_forcefulness !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.average_evaluator_forcefulness)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.average_evaluator_forcefulness)}>
             Forcefulness: {fmt(summaryStatistics.average_evaluator_forcefulness)}/10
           </span>
         {/if}
         {#if summaryStatistics.average_evaluation_awareness !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.average_evaluation_awareness)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.average_evaluation_awareness)}>
             Awareness: {fmt(summaryStatistics.average_evaluation_awareness)}/10
           </span>
         {/if}
         {#if summaryStatistics.average_evaluator_inconsistency !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.average_evaluator_inconsistency)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.average_evaluator_inconsistency)}>
             Inconsistency: {fmt(summaryStatistics.average_evaluator_inconsistency)}/10
           </span>
         {/if}
         {#if summaryStatistics.average_instruction_evasion !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.average_instruction_evasion)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.average_instruction_evasion)}>
             Evasion: {fmt(summaryStatistics.average_instruction_evasion)}/10
           </span>
         {/if}
         {#if summaryStatistics.average_bugs !== undefined}
-          <span class="badge badge-sm {getScoreColor(summaryStatistics.average_bugs)}">
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.average_bugs)}>
             Bugs: {fmt(summaryStatistics.average_bugs)}/10
           </span>
         {/if}

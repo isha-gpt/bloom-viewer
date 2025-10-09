@@ -23,7 +23,7 @@ export async function scanDirectoryForTranscripts(
     
     // Separate files and directories
     const transcriptFiles = entries
-      .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+      .filter(entry => entry.isFile() && entry.name.startsWith('transcript_') && entry.name.endsWith('.json'))
       .map(entry => {
         const fullPath = path.join(dirPath, entry.name);
         // Return path relative to basePath
@@ -107,7 +107,7 @@ export async function getDirectoryStats(dirPath: string): Promise<{
     const fileCount = entries.filter(entry => entry.isFile()).length;
     const subdirCount = entries.filter(entry => entry.isDirectory()).length;
     const transcriptCount = entries
-      .filter(entry => entry.isFile() && entry.name.endsWith('.json')).length;
+      .filter(entry => entry.isFile() && entry.name.startsWith('transcript_') && entry.name.endsWith('.json')).length;
     
     return {
       exists: true,

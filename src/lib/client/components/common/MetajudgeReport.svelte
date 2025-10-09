@@ -13,7 +13,7 @@
       average_evaluator_inconsistency?: number;
       average_instruction_evasion?: number;
       average_bugs?: number;
-      meta_diversity_score?: number;
+      meta_diversity?: number;
     };
     metajudgmentResponse?: string;
     metajudgmentJustification?: string;
@@ -80,9 +80,9 @@
     <!-- Summary Statistics Badges -->
     {#if summaryStatistics}
       <div class="flex flex-wrap gap-1.5">
-        {#if summaryStatistics.meta_diversity_score !== undefined}
-          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.meta_diversity_score)}>
-            Diversity: {summaryStatistics.meta_diversity_score}/10
+        {#if summaryStatistics.meta_diversity !== undefined}
+          <span class="badge badge-sm" style={getScoreColorContinuous(summaryStatistics.meta_diversity)}>
+            Diversity: {summaryStatistics.meta_diversity}/10
           </span>
         {/if}
         {#if summaryStatistics.average_unrealism !== undefined}

@@ -125,29 +125,51 @@ function normalizeRawMessage(raw: RawChatMessage, viewSource: string | string[] 
       return { type: 'system', content: raw.content, ...baseProps } as Message;
     case 'user':
       return { type: 'user', content: raw.content, ...baseProps } as Message;
-    case 'assistant':
-      return { 
-        type: 'assistant', 
-        content: raw.content, 
-        tool_calls: raw.tool_calls ?? undefined, 
-        ...baseProps 
+    case 'assistant': {
+      // Extract reasoning from content array if present
+      let reasoning: string | undefined = undefined;
+      let contentWithoutReasoning = raw.content;
+
+      if (Array.isArray(raw.content)) {
+        // Find reasoning block and filter it out from content
+        const reasoningBlock = raw.content.find(
+          (item): item is { type: string; reasoning: string } =>
+            typeof item === 'object' && item !== null && 'type' in item && item.type === 'reasoning'
+        );
+
+        if (reasoningBlock) {
+          reasoning = reasoningBlock.reasoning;
+          // Remove reasoning from content array
+          contentWithoutReasoning = raw.content.filter(item =>
+            !(typeof item === 'object' && item !== null && 'type' in item && item.type === 'reasoning')
+          );
+        }
+      }
+
+      return {
+        type: 'assistant',
+        content: contentWithoutReasoning,
+        tool_calls: raw.tool_calls ?? undefined,
+        reasoning,
+        ...baseProps
       } as Message;
+    }
     case 'tool': {
-      return { 
-        type: 'tool', 
-        content: raw.content, 
+      return {
+        type: 'tool',
+        content: raw.content,
         tool_call_id: raw.tool_call_id ?? undefined,
         function: raw.function ?? undefined,
         error: raw.error ?? undefined,
-        ...baseProps 
+        ...baseProps
       } as Message;
     }
     default:
       // Fallback to system if unknown role
-      return { 
-        type: 'system', 
-        content: (raw as any).content, 
-        ...baseProps 
+      return {
+        type: 'system',
+        content: (raw as any).content,
+        ...baseProps
       } as Message;
   }
 }

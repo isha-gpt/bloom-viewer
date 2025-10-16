@@ -476,16 +476,24 @@
 {#snippet assistantMessage(message: AssistantMessage)}
   {@const textContent = extractTextFromContent(message.content)}
   {#if message.reasoning}
-    <div class="mt-3 space-y-2">
-      <i>{message.reasoning.trim()}</i><!--
- --></div><!--
- --><div class="my-2 border-t border-black/10 dark:border-white/10"></div><!--
- -->{/if}<!--
- -->{#if textContent !== null}<!--
- --> <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{textContent}</span><!--
- -->{:else}<!--
- --> <JsonViewer value={message.content} theme={$themeString} inlineShortContainers={80} /><!--
--->{/if}{#if message.tool_calls && message.tool_calls.length > 0}
+    <div class="mb-3 p-3 rounded-lg bg-purple-100/50 dark:bg-purple-900/20 border border-purple-200/50 dark:border-purple-700/30">
+      <div class="flex items-center gap-2 mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-purple-600 dark:text-purple-400">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+        </svg>
+        <span class="text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-300">Reasoning</span>
+      </div>
+      <div class="text-sm text-purple-900 dark:text-purple-100 whitespace-pre-wrap leading-relaxed italic">
+        {message.reasoning.trim()}
+      </div>
+    </div>
+  {/if}
+  {#if textContent !== null}
+    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{textContent}</span>
+  {:else}
+    <JsonViewer value={message.content} theme={$themeString} inlineShortContainers={80} />
+  {/if}
+  {#if message.tool_calls && message.tool_calls.length > 0}
     {@render toolCalls(message.tool_calls)}
   {/if}
 {/snippet}

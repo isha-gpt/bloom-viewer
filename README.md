@@ -1,6 +1,6 @@
-# Blume Evals - Transcript Viewer
+# bloom Evals - Transcript Viewer
 
-A web-based viewer for AI conversation transcripts with support for rollbacks, branching conversations, and detailed analysis. Customized for Blume evaluations with metajudge reporting, score visualization, and hierarchical evaluation suite organization.
+A web-based viewer for AI conversation transcripts with support for rollbacks, branching conversations, and detailed analysis. Customized for bloom evaluations with metajudge reporting, score visualization, and hierarchical evaluation suite organization.
 
 Based on [`@kaifronsdal/transcript-viewer`](https://www.npmjs.com/package/@kaifronsdal/transcript-viewer).
 
@@ -106,7 +106,7 @@ Optional metajudge data for each configuration:
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd blume-viewer
+cd bloom-viewer
 
 # Install dependencies
 npm install

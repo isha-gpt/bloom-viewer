@@ -10,18 +10,18 @@ return {
 	assets: new Set(["apple-touch-icon.png","favicon-16x16.png","favicon-96x96.png","favicon.ico","favicon.png","favicon.svg"]),
 	mimeTypes: {".png":"image/png",".svg":"image/svg+xml"},
 	_: {
-		client: {start:"_app/immutable/entry/start.DaA8SoWF.js",app:"_app/immutable/entry/app.CDqy5lFy.js",imports:["_app/immutable/entry/start.DaA8SoWF.js","_app/immutable/chunks/GqydwW5y.js","_app/immutable/chunks/BHtLyNKX.js","_app/immutable/chunks/ChBQ6wb0.js","_app/immutable/chunks/Cvg8IsPE.js","_app/immutable/chunks/y-p8HmmE.js","_app/immutable/chunks/HDAF0gzz.js","_app/immutable/entry/app.CDqy5lFy.js","_app/immutable/chunks/ChBQ6wb0.js","_app/immutable/chunks/Cvg8IsPE.js","_app/immutable/chunks/Bzak7iHL.js","_app/immutable/chunks/BHtLyNKX.js","_app/immutable/chunks/y-p8HmmE.js","_app/immutable/chunks/lmMq8u3N.js","_app/immutable/chunks/Ch83Ufs9.js","_app/immutable/chunks/CTHtwRlK.js","_app/immutable/chunks/DXsosdFf.js","_app/immutable/chunks/HDAF0gzz.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.CiQr0Xrr.js",app:"_app/immutable/entry/app.DO3uWfPL.js",imports:["_app/immutable/entry/start.CiQr0Xrr.js","_app/immutable/chunks/DpojAhoj.js","_app/immutable/chunks/BHtLyNKX.js","_app/immutable/chunks/ChBQ6wb0.js","_app/immutable/chunks/Cvg8IsPE.js","_app/immutable/chunks/y-p8HmmE.js","_app/immutable/chunks/HDAF0gzz.js","_app/immutable/entry/app.DO3uWfPL.js","_app/immutable/chunks/ChBQ6wb0.js","_app/immutable/chunks/Cvg8IsPE.js","_app/immutable/chunks/Bzak7iHL.js","_app/immutable/chunks/BHtLyNKX.js","_app/immutable/chunks/y-p8HmmE.js","_app/immutable/chunks/lmMq8u3N.js","_app/immutable/chunks/Ch83Ufs9.js","_app/immutable/chunks/CTHtwRlK.js","_app/immutable/chunks/DXsosdFf.js","_app/immutable/chunks/HDAF0gzz.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./chunks/0-DP2Y-Q7L.js')),
-			__memo(() => import('./chunks/1-Ba-h4lL7.js')),
-			__memo(() => import('./chunks/2-Ffl0NwXl.js')),
+			__memo(() => import('./chunks/1-DcOJ3G-l.js')),
+			__memo(() => import('./chunks/2-BV_LfSdU.js')),
 			__memo(() => import('./chunks/3-BS7pjD72.js')),
 			__memo(() => import('./chunks/4-mIOWs2D2.js')),
 			__memo(() => import('./chunks/5-CEeUCEO8.js')),
 			__memo(() => import('./chunks/6-DyGpwL6f.js')),
 			__memo(() => import('./chunks/7-CRZJszC8.js')),
 			__memo(() => import('./chunks/8-B-IVDXOJ.js')),
-			__memo(() => import('./chunks/9-Cc1htmvo.js'))
+			__memo(() => import('./chunks/9-BNUxG_KO.js'))
 		],
 		remotes: {
 			
@@ -61,6 +61,13 @@ return {
 				params: [],
 				page: null,
 				endpoint: __memo(() => import('./chunks/_server.ts-GPTvvcCj.js'))
+			},
+			{
+				id: "/api/transcripts/index",
+				pattern: /^\/api\/transcripts\/index\/?$/,
+				params: [],
+				page: null,
+				endpoint: __memo(() => import('./chunks/_server.ts-CcIp2c2i.js'))
 			},
 			{
 				id: "/api/transcripts/list",

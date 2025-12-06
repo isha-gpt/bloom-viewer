@@ -98,6 +98,32 @@ Optional metajudge data for each configuration:
 
 ## Quick Start
 
+### Using npx (Recommended for Production)
+
+The easiest way to use the viewer is via npx:
+
+```bash
+npx @isha-gpt/bloom-viewer@latest --dir /path/to/your/transcripts
+```
+
+This will automatically download the latest version, build indexes for your transcripts, and start the server.
+
+**Available CLI options:**
+- `--dir <path>` - Path to transcript directory (required)
+- `--port <number>` - Port to run the server on (default: 3000)
+- `--host <address>` - Host address (default: localhost, use 0.0.0.0 for remote access)
+- `-f, --force` - Force rebuild of the production bundle
+- `--no-open` - Don't automatically open the browser
+
+**Example with custom settings:**
+```bash
+npx @isha-gpt/bloom-viewer@latest --dir ./transcripts --port 8080 --host 0.0.0.0
+```
+
+**Note on first startup:** When you first start the server, it will automatically build indexes for all transcript configurations. This process scans your transcript directory and creates lightweight index files (stored as `_index.json` in each config directory) that dramatically improve page load performance. For large datasets (e.g., 20,000+ transcripts across 34 configs), this initial indexing may take 30-60 seconds. Subsequent server restarts will use the cached indexes. If you reorganize folders, the indexes move with them automatically.
+
+### Development Setup
+
 ### Prerequisites
 - Node.js 18+
 - npm or pnpm
@@ -120,7 +146,7 @@ npm run dev
 
 The viewer will be available at `http://localhost:3000`.
 
-### Available Commands
+### Development Commands
 
 ```bash
 # Development

@@ -9,28 +9,7 @@ if (typeof window !== 'undefined') {
 }
 
 const INDEX_VERSION = '1.0';
-const INDEX_CACHE_DIR = '.cache/indexes';
-
-/**
- * Get the cache directory path relative to project root
- */
-function getIndexCacheDir(): string {
-  // Assuming we're running from the project root
-  return path.resolve(process.cwd(), INDEX_CACHE_DIR);
-}
-
-/**
- * Ensure the index cache directory exists
- */
-async function ensureIndexCacheDir(): Promise<void> {
-  const cacheDir = getIndexCacheDir();
-  try {
-    await fs.mkdir(cacheDir, { recursive: true });
-  } catch (error) {
-    console.error('Failed to create index cache directory:', error);
-    throw error;
-  }
-}
+const INDEX_FILENAME = '_index.json';
 
 /**
  * Build index for a single config directory
@@ -192,27 +171,23 @@ export async function buildConfigIndex(
 }
 
 /**
- * Store a config index to the cache directory
+ * Store a config index in the config directory
  */
-export async function storeConfigIndex(configPath: string, index: ConfigIndex): Promise<void> {
-  await ensureIndexCacheDir();
-
-  const cacheDir = getIndexCacheDir();
-  const indexFileName = configPath.replace(/\//g, '__') + '.json';
-  const indexFilePath = path.join(cacheDir, indexFileName);
+export async function storeConfigIndex(transcriptDir: string, configPath: string, index: ConfigIndex): Promise<void> {
+  const configDirPath = path.join(transcriptDir, configPath);
+  const indexFilePath = path.join(configDirPath, INDEX_FILENAME);
 
   await fs.writeFile(indexFilePath, JSON.stringify(index, null, 2), 'utf-8');
-  console.log(`💾 [INDEX-BUILDER] Stored index: ${indexFilePath}`);
+  console.log(`💾 [INDEX-BUILDER] Stored index: ${configPath}/${INDEX_FILENAME}`);
 }
 
 /**
- * Load a config index from the cache directory
+ * Load a config index from the config directory
  */
-export async function loadConfigIndex(configPath: string): Promise<ConfigIndex | null> {
+export async function loadConfigIndex(transcriptDir: string, configPath: string): Promise<ConfigIndex | null> {
   try {
-    const cacheDir = getIndexCacheDir();
-    const indexFileName = configPath.replace(/\//g, '__') + '.json';
-    const indexFilePath = path.join(cacheDir, indexFileName);
+    const configDirPath = path.join(transcriptDir, configPath);
+    const indexFilePath = path.join(configDirPath, INDEX_FILENAME);
 
     const content = await fs.readFile(indexFilePath, 'utf-8');
     return JSON.parse(content);
@@ -271,7 +246,7 @@ export async function buildAllIndexes(transcriptDir: string): Promise<void> {
     try {
       const index = await buildConfigIndex(transcriptDir, configPath);
       if (index) {
-        await storeConfigIndex(configPath, index);
+        await storeConfigIndex(transcriptDir, configPath, index);
         successCount++;
       } else {
         failCount++;
@@ -286,35 +261,41 @@ export async function buildAllIndexes(transcriptDir: string): Promise<void> {
 }
 
 /**
- * Load all cached indexes and aggregate them by suite
+ * Load all indexes by dynamically scanning the directory structure
  */
 export async function loadAggregatedIndexes(transcriptDir: string): Promise<AggregatedIndex> {
-  const cacheDir = getIndexCacheDir();
+  console.log(`📊 [INDEX-BUILDER] Loading indexes by scanning: ${transcriptDir}`);
 
-  try {
-    await fs.access(cacheDir);
-  } catch {
-    // Cache directory doesn't exist, return empty
-    return {
-      version: INDEX_VERSION,
-      generated_at: new Date().toISOString(),
-      suites: []
-    };
-  }
+  // Find all config folders
+  const configPaths = await findConfigFolders(transcriptDir);
+  console.log(`📁 [INDEX-BUILDER] Found ${configPaths.length} config folders`);
 
-  // Read all index files
-  const indexFiles = await fs.readdir(cacheDir);
+  // Load index for each config
   const configIndexes: ConfigIndex[] = [];
 
-  for (const filename of indexFiles) {
-    if (!filename.endsWith('.json')) continue;
-
+  for (const configPath of configPaths) {
     try {
-      const content = await fs.readFile(path.join(cacheDir, filename), 'utf-8');
-      const index = JSON.parse(content);
-      configIndexes.push(index);
+      const index = await loadConfigIndex(transcriptDir, configPath);
+
+      // Check if index exists and path matches (folder might have been moved)
+      if (index && index.config.path === configPath) {
+        configIndexes.push(index);
+      } else {
+        if (index) {
+          console.warn(`⚠️ [INDEX-BUILDER] Index path mismatch for ${configPath} (stored: ${index.config.path}), rebuilding`);
+        } else {
+          console.warn(`⚠️ [INDEX-BUILDER] No index found for ${configPath}, building fresh`);
+        }
+
+        // Rebuild index if it doesn't exist or path doesn't match
+        const newIndex = await buildConfigIndex(transcriptDir, configPath);
+        if (newIndex) {
+          await storeConfigIndex(transcriptDir, configPath, newIndex);
+          configIndexes.push(newIndex);
+        }
+      }
     } catch (error) {
-      console.error(`Failed to load index file ${filename}:`, error);
+      console.error(`Failed to load index for ${configPath}:`, error);
     }
   }
 
@@ -338,6 +319,8 @@ export async function loadAggregatedIndexes(transcriptDir: string): Promise<Aggr
     configs
   }));
 
+  console.log(`✅ [INDEX-BUILDER] Loaded ${configIndexes.length} config indexes in ${suites.length} suites`);
+
   return {
     version: INDEX_VERSION,
     generated_at: new Date().toISOString(),
@@ -346,17 +329,24 @@ export async function loadAggregatedIndexes(transcriptDir: string): Promise<Aggr
 }
 
 /**
- * Clear all cached indexes
+ * Clear all cached indexes by deleting _index.json files in config directories
  */
-export async function clearIndexCache(): Promise<void> {
-  const cacheDir = getIndexCacheDir();
-
+export async function clearIndexCache(transcriptDir: string): Promise<void> {
   try {
-    const files = await fs.readdir(cacheDir);
-    for (const file of files) {
-      await fs.unlink(path.join(cacheDir, file));
+    const configPaths = await findConfigFolders(transcriptDir);
+    let deletedCount = 0;
+
+    for (const configPath of configPaths) {
+      try {
+        const indexPath = path.join(transcriptDir, configPath, INDEX_FILENAME);
+        await fs.unlink(indexPath);
+        deletedCount++;
+      } catch (error) {
+        // Index file might not exist, that's okay
+      }
     }
-    console.log('🗑️ [INDEX-BUILDER] Cleared all cached indexes');
+
+    console.log(`🗑️ [INDEX-BUILDER] Cleared ${deletedCount} cached indexes`);
   } catch (error) {
     console.error('Failed to clear index cache:', error);
   }

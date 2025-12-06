@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
     return json(aggregatedIndex, {
       headers: {
-        'Cache-Control': 'public, max-age=300', // 5 minutes cache
+        'Cache-Control': 'no-cache', // Always rescan to detect folder changes
       }
     });
   } catch (err: any) {

@@ -1,5 +1,6 @@
 import type { TranscriptDisplay, TableRow } from '$lib/shared/types';
 import { buildFolderTreeFromTranscripts } from '$lib/client/utils/client-tree-builder';
+import type { AggregatedIndex } from '$lib/server/cache/index-types';
 
 export interface LoadDataResult {
   transcripts: TranscriptDisplay[];
@@ -11,12 +12,13 @@ export interface LoadDataResult {
 export function createTranscriptDataLoader() {
   // Store the raw transcript data (single source of truth)
   let rawTranscripts = $state<TranscriptDisplay[]>([]);
+  let rawIndexData = $state<AggregatedIndex | null>(null);
   let loading = $state(true);
   let error = $state<string | null>(null);
   let loadingErrors = $state<any[]>([]);
   let loadingStats = $state<any>(null);
-  
-  
+
+
   // Derived views built from the raw data (cached automatically by Svelte)
   let transcripts = $derived(rawTranscripts); // Return raw transcripts for list view
   let folderTree = $derived(buildFolderTreeFromTranscripts(rawTranscripts));
@@ -64,23 +66,47 @@ export function createTranscriptDataLoader() {
   }
 
   async function loadDataBulk(rootDirParam: string, includeErrors: boolean) {
-    // Always load the flat transcript list (single source of truth)
-    // Both views will be derived from this data client-side
-    const url = `/api/transcripts/list${rootDirParam ? `?${rootDirParam.slice(1)}` : ''}`;
-    console.log('🌐 [DEBUG] Fetching unified data from:', url);
+    // Load from the new index endpoint which returns pre-built indexes
+    const url = `/api/transcripts/index${rootDirParam ? `?${rootDirParam.slice(1)}` : ''}`;
+    console.log('🌐 [DEBUG] Fetching index data from:', url);
     const response = await fetch(url);
     console.log('📡 [DEBUG] Response:', response.status, response.ok);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to load transcripts: ${response.status} ${response.statusText}`);
     }
-    
-    const data = await response.json();
-    rawTranscripts = Array.isArray(data) ? data : [];
+
+    const indexData = await response.json();
+
+    // Flatten the suite→config→transcripts hierarchy into a flat array
+    // This maintains compatibility with existing client code
+    const allTranscripts: TranscriptDisplay[] = [];
+
+    if (indexData.suites) {
+      for (const suite of indexData.suites) {
+        for (const config of suite.configs) {
+          for (const transcript of config.transcripts) {
+            // Add model metadata from config level
+            allTranscripts.push({
+              ...transcript,
+              model: config.config.target_model || '',
+              auditorModel: config.config.auditor_model,
+              targetModel: config.config.target_model,
+              // Extract split from path (second-to-last path component is the behavior/split)
+              split: config.config.name || ''
+            } as TranscriptDisplay);
+          }
+        }
+      }
+    }
+
+    rawTranscripts = allTranscripts;
+    rawIndexData = indexData;
     loadingStats = null;
     loadingErrors = [];
-    
-    console.log('✅ [DEBUG] Data loaded successfully:', {
+
+    console.log('✅ [DEBUG] Index data loaded successfully:', {
+      suiteCount: indexData.suites?.length || 0,
       transcriptCount: rawTranscripts.length,
       hasStats: !!loadingStats,
       errorCount: loadingErrors.length
@@ -89,15 +115,41 @@ export function createTranscriptDataLoader() {
 
   
 
+  // Helper function to get judgment and evaluation data for a config path
+  function getConfigData(configPath: string): { judgment: any; evaluation: any } | null {
+    if (!rawIndexData) return null;
+
+    for (const suite of rawIndexData.suites) {
+      for (const config of suite.configs) {
+        if (config.config.path === configPath) {
+          return {
+            judgment: {
+              summaryStatistics: config.summary_statistics,
+              metajudgmentResponse: config.metajudge?.response,
+              metajudgmentJustification: config.metajudge?.justification
+            },
+            evaluation: {
+              metadata: config.evaluation_metadata || {}
+            }
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
   return {
     get transcripts() { return transcripts; },
     get folderTree() { return folderTree; },
     get loading() { return loading; },
     get error() { return error; },
-    get loadingErrors() { 
-      return loadingErrors; 
+    get loadingErrors() {
+      return loadingErrors;
     },
     get loadingStats() { return loadingStats; },
+    get indexData() { return rawIndexData; },
+    getConfigData,
     loadData
   };
 }

@@ -17,44 +17,16 @@
 	// Create data loader
 	const dataLoader = createTranscriptDataLoader();
 
-	// Store for judgment data by config path
-	let judgmentData = $state<Record<string, any>>({});
-
-	// Store for evaluation metadata by config path
-	let evaluationMetadata = $state<Record<string, any>>({});
-
-	// Function to load judgment data for a config
-	async function loadJudgmentData(configPath: string) {
-		if (judgmentData[configPath]) return; // Already loaded
-
-		try {
-			const response = await fetch(`/api/judgment/${encodeURIComponent(configPath)}`);
-			if (response.ok) {
-				judgmentData[configPath] = await response.json();
-			} else {
-				judgmentData[configPath] = null;
-			}
-		} catch (error) {
-			console.error('Failed to load judgment data for', configPath, error);
-			judgmentData[configPath] = null;
-		}
+	// Get judgment and evaluation data from the loaded index
+	// This replaces the separate API calls
+	function getJudgmentData(configPath: string): any {
+		const data = dataLoader.getConfigData(configPath);
+		return data?.judgment || null;
 	}
 
-	// Function to load evaluation metadata for a config
-	async function loadEvaluationMetadata(configPath: string) {
-		if (evaluationMetadata[configPath]) return; // Already loaded
-
-		try {
-			const response = await fetch(`/api/evaluation/${encodeURIComponent(configPath)}`);
-			if (response.ok) {
-				evaluationMetadata[configPath] = await response.json();
-			} else {
-				evaluationMetadata[configPath] = null;
-			}
-		} catch (error) {
-			console.error('Failed to load evaluation metadata for', configPath, error);
-			evaluationMetadata[configPath] = null;
-		}
+	function getEvaluationMetadata(configPath: string): any {
+		const data = dataLoader.getConfigData(configPath);
+		return data?.evaluation || null;
 	}
 
 	// Get current subdirectory path from URL parameter
@@ -91,22 +63,8 @@
 		return () => {};
 	});
 
-	// Effect to load evaluation metadata and judgment data for all visible configs
-	$effect(() => {
-		if (dataLoader.folderTree) {
-			// Load evaluation metadata and judgment data for all configs in the folder tree
-			for (const suite of dataLoader.folderTree) {
-				if (suite.subRows) {
-					for (const config of suite.subRows) {
-						if (config.type === 'folder' && config.path) {
-							loadEvaluationMetadata(config.path);
-							loadJudgmentData(config.path);
-						}
-					}
-				}
-			}
-		}
-	});
+	// Note: Judgment and evaluation data is now loaded as part of the index
+	// No need for separate API calls
 
 	// Watch for changes in path and reload data (view mode changes no longer trigger reload!)
 	let previousPath = $state('');
@@ -290,16 +248,10 @@
 										{#if config.type === 'folder'}
 											{@const auditorModelShort = config.auditorModel?.split('/').pop() || 'Unknown'}
 											{@const targetModelShort = config.targetModel?.split('/').pop() || 'Unknown'}
+											{@const judgmentData = getJudgmentData(config.path)}
+											{@const evaluationMetadata = getEvaluationMetadata(config.path)}
 											<div class="collapse collapse-arrow bg-base-200 border border-base-300">
-												<input
-													type="checkbox"
-													onchange={(e) => {
-														if (e.target.checked) {
-															loadJudgmentData(config.path);
-															loadEvaluationMetadata(config.path);
-														}
-													}}
-												/>
+												<input type="checkbox" />
 												<div class="collapse-title font-medium">
 													<div class="flex items-center justify-between">
 														<div class="flex items-center gap-3">
@@ -307,15 +259,15 @@
 															<span class="badge badge-sm badge-ghost">{config.transcriptCount || 0} transcripts</span>
 														</div>
 														<div class="flex items-center gap-2">
-															{#if judgmentData[config.path]?.summaryStatistics?.average_behavior_presence_score !== undefined}
-																{@const score = judgmentData[config.path].summaryStatistics.average_behavior_presence_score}
+															{#if judgmentData?.summaryStatistics?.average_behavior_presence_score !== undefined}
+																{@const score = judgmentData.summaryStatistics.average_behavior_presence_score}
 																{@const scoreStyle = getScoreColorContinuous(score)}
 																<span class="badge" style={scoreStyle}>
 																	Avg Behavior Presence: {score.toFixed(1)}/10
 																</span>
 															{/if}
-															{#if judgmentData[config.path]?.summaryStatistics?.elicitation_rate !== undefined}
-																{@const rate = judgmentData[config.path].summaryStatistics.elicitation_rate}
+															{#if judgmentData?.summaryStatistics?.elicitation_rate !== undefined}
+																{@const rate = judgmentData.summaryStatistics.elicitation_rate}
 																{@const percentage = (rate * 100).toFixed(1)}
 																{@const rateScore = rate * 10}
 																{@const rateStyle = getScoreColorContinuous(rateScore)}
@@ -326,8 +278,8 @@
 														</div>
 													</div>
 													<!-- Display evaluation metadata tags on second row -->
-													{#if evaluationMetadata[config.path]?.metadata}
-														{@const metadata = evaluationMetadata[config.path].metadata}
+													{#if evaluationMetadata?.metadata}
+														{@const metadata = evaluationMetadata.metadata}
 														<div class="flex items-center gap-1.5 flex-wrap mt-2">
 															{#each Object.entries(metadata) as [key, value]}
 																<span class="px-1.5 py-0.5 text-[10px] bg-base-200 border border-base-300 font-mono">{key}: {value}</span>
@@ -338,11 +290,11 @@
 												<div class="collapse-content">
 													<div class="pt-2 space-y-4">
 														<!-- Metajudge Report -->
-														{#if judgmentData[config.path]}
+														{#if judgmentData}
 															<MetajudgeReport
-																summaryStatistics={judgmentData[config.path].summaryStatistics}
-																metajudgmentResponse={judgmentData[config.path].metajudgmentResponse}
-																metajudgmentJustification={judgmentData[config.path].metajudgmentJustification}
+																summaryStatistics={judgmentData.summaryStatistics}
+																metajudgmentResponse={judgmentData.metajudgmentResponse}
+																metajudgmentJustification={judgmentData.metajudgmentJustification}
 															/>
 														{/if}
 

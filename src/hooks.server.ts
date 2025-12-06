@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { initializeGlobalCache, shutdownGlobalCache, getTranscriptCache } from '$lib/server/cache/transcript-cache';
+import { buildAllIndexes } from '$lib/server/cache/index-builder';
 import { TRANSCRIPT_DIR } from '$lib/server/config';
 
 // Initialize cache on server startup
@@ -21,15 +22,20 @@ if (import.meta.hot) {
 
 async function initializeCache() {
   if (cacheInitialized) return;
-  
+
   try {
     // Get transcript directory from environment or use default
     console.log(`🚀 [SERVER] Initializing transcript cache for directory: ${TRANSCRIPT_DIR}`);
-    
+
     await initializeGlobalCache(TRANSCRIPT_DIR);
+
+    // Build indexes for all configs (this will be fast if indexes already exist)
+    console.log('📊 [SERVER] Building transcript indexes...');
+    await buildAllIndexes(TRANSCRIPT_DIR);
+
     cacheInitialized = true;
-    
-    console.log('✅ [SERVER] Transcript cache initialized successfully');
+
+    console.log('✅ [SERVER] Transcript cache and indexes initialized successfully');
   } catch (error) {
     console.error('🚨 [SERVER] Failed to initialize transcript cache:', error);
     // Don't throw - server should still work without cache

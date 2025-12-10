@@ -114,13 +114,37 @@
         // Escape special regex characters
         const escapedHighlight = highlightText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`(${escapedHighlight})`, 'gi');
-        result = result.replace(regex, '<mark class="bg-yellow-300 dark:bg-yellow-600 px-1 rounded">$1</mark>');
+        result = result.replace(regex, '<mark class="quote-highlight px-1 rounded">$1</mark>');
       }
 
       return result;
     } catch {
       return content || '';
     }
+  }
+
+  // Helper function to highlight text in plain content (non-markdown)
+  function highlightPlainText(text: string): string {
+    if (!highlightText || !text.includes(highlightText)) {
+      return text;
+    }
+
+    // Escape special regex characters and HTML-escape the text
+    const escapedHighlight = highlightText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedHighlight})`, 'gi');
+
+    // HTML-escape the text first to prevent XSS
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+    // Apply highlight with pale yellow for dark mode to keep white text readable
+    const highlighted = escaped.replace(regex, '<mark class="quote-highlight px-1 rounded">$1</mark>');
+
+    return highlighted;
   }
 
   // Left-edge accent mapped from badge color for assistant messages
@@ -300,6 +324,44 @@
   const messageColors = $derived(getMessageColors(message.type));
 </script>
 
+<style>
+  /* Light mode: bright yellow background, dark text */
+  :global(mark.quote-highlight) {
+    animation: highlight-fade-light 2s ease-in-out forwards;
+    color: rgb(17 24 39) !important; /* gray-900 - dark text for light mode */
+  }
+
+  @keyframes highlight-fade-light {
+    0% {
+      background-color: rgb(253 224 71); /* yellow-300 - bright */
+    }
+    70% {
+      background-color: rgb(253 224 71);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  /* Dark mode: pale yellow background with white text (using class-based dark mode) */
+  :global(.dark mark.quote-highlight) {
+    animation: highlight-fade-dark 2s ease-in-out forwards;
+    color: rgb(255 255 255) !important; /* white text for dark mode */
+  }
+
+  @keyframes highlight-fade-dark {
+    0% {
+      background-color: rgba(253, 224, 71, 0.35); /* pale yellow, 35% opacity */
+    }
+    70% {
+      background-color: rgba(253, 224, 71, 0.35);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+</style>
+
 <!-- Message Card Container -->
 <div
   class={`border rounded-lg ${messageColors.bg} ${messageColors.border} ${leftEdgeClassForAssistant(message)} ${message.isShared ? 'border-dashed' : ''} ${!isVisible ? 'invisible pointer-events-none' : ''}`}
@@ -456,7 +518,7 @@
 {#snippet systemMessage(message: SystemMessage)}
   {@const textContent = extractTextFromContent(message.content)}
   {#if textContent !== null}
-    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{textContent}</span>
+    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{@html highlightPlainText(textContent)}</span>
   {:else}
     <JsonViewer value={message.content} theme={$themeString} inlineShortContainers={80} />
   {/if}
@@ -466,7 +528,7 @@
 {#snippet userMessage(message: UserMessage)}
   {@const textContent = extractTextFromContent(message.content)}
   {#if textContent !== null}
-    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{textContent}</span>
+    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{@html highlightPlainText(textContent)}</span>
   {:else}
     <JsonViewer value={message.content} theme={$themeString} inlineShortContainers={80} />
   {/if}
@@ -484,12 +546,12 @@
         <span class="text-xs font-semibold uppercase tracking-wide text-purple-700 dark:text-purple-300">Reasoning</span>
       </div>
       <div class="text-sm text-purple-900 dark:text-purple-100 whitespace-pre-wrap leading-relaxed italic">
-        {message.reasoning.trim()}
+        {@html highlightPlainText(message.reasoning.trim())}
       </div>
     </div>
   {/if}
   {#if textContent !== null}
-    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{textContent}</span>
+    <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{@html highlightPlainText(textContent)}</span>
   {:else}
     <JsonViewer value={message.content} theme={$themeString} inlineShortContainers={80} />
   {/if}
@@ -503,11 +565,11 @@
   <div class="space-y-2">
     {#if message.error}
       <div class="whitespace-pre-wrap leading-snug text-[0.9em] text-red-600 dark:text-red-400 overflow-x-auto">
-        {message.error.message}
+        {@html highlightPlainText(message.error.message)}
       </div>
     {/if}
     {#if message.content}
-      <div class="whitespace-pre-wrap font-mono text-[0.9em] leading-snug text-sm text-gray-900 dark:text-gray-100 overflow-x-auto">{message.content}</div>
+      <div class="whitespace-pre-wrap font-mono text-[0.9em] leading-snug text-sm text-gray-900 dark:text-gray-100 overflow-x-auto">{@html highlightPlainText(message.content)}</div>
     {/if}
   </div>
 {/snippet}
@@ -523,7 +585,7 @@
       {/if}
     </div>
     <div class="font-mono text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-700/50 text-gray-900 dark:text-red-100">
-      {message.error_message}
+      {@html highlightPlainText(message.error_message)}
     </div>
   </div>
 {/snippet}
@@ -542,7 +604,7 @@
     </div>
     <div class="font-mono text-sm bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-200 dark:border-blue-700/50 text-gray-900 dark:text-blue-100">
       {#if typeof message.info === 'string'}
-        {message.info}
+        {@html highlightPlainText(message.info)}
       {:else}
         <JsonViewer value={message.info} theme={$themeString} inlineShortContainers={80} />
       {/if}

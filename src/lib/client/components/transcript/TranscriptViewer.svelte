@@ -188,9 +188,10 @@
           );
 
           if (!isOverlapping) {
-            // Escape quotes in the quoted text for JSON
+            // Escape quotes in the quoted text for data attributes
             const escapedQuotedText = data.quotedText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            const refLink = `<button class="text-primary hover:text-primary-focus font-semibold cursor-pointer ml-0.5" onclick="document.dispatchEvent(new CustomEvent('scrollToMessage', { detail: { messageId: '${data.messageId}', quotedText: '${escapedQuotedText}' } }))" title="Jump to message">[${refNumber}]</button>`;
+            // Use data attributes instead of inline onclick
+            const refLink = `<button class="quote-ref-btn text-primary hover:text-primary-focus font-semibold cursor-pointer ml-0.5 underline" data-message-id="${data.messageId}" data-quoted-text="${escapedQuotedText}" title="Jump to message">[${refNumber}]</button>`;
             const newHtml = fullMatch + refLink;
             replacements.push({
               start: startPos,
@@ -216,18 +217,27 @@
     return result;
   }
 
-  // Listen for scroll events from custom event
+  // Listen for clicks on quote reference buttons using event delegation
   $effect(() => {
-    function handleScrollToMessage(event: CustomEvent<{ messageId: string; quotedText?: string }>) {
-      const { messageId, quotedText } = event.detail;
-      // Decode HTML entities
-      const decodedQuotedText = quotedText ? quotedText.replace(/&quot;/g, '"').replace(/&#39;/g, "'") : undefined;
-      scrollToMessage(messageId, decodedQuotedText);
+    function handleQuoteClick(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+
+      // Check if the clicked element is a quote reference button
+      if (target.classList.contains('quote-ref-btn')) {
+        const messageId = target.getAttribute('data-message-id');
+        const quotedText = target.getAttribute('data-quoted-text');
+
+        if (messageId) {
+          // Decode HTML entities
+          const decodedQuotedText = quotedText ? quotedText.replace(/&quot;/g, '"').replace(/&#39;/g, "'") : undefined;
+          scrollToMessage(messageId, decodedQuotedText);
+        }
+      }
     }
 
-    document.addEventListener('scrollToMessage', handleScrollToMessage as EventListener);
+    document.addEventListener('click', handleQuoteClick);
     return () => {
-      document.removeEventListener('scrollToMessage', handleScrollToMessage as EventListener);
+      document.removeEventListener('click', handleQuoteClick);
     };
   });
 
